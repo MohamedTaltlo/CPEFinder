@@ -1,0 +1,6 @@
+CPEFinder.exe
+*.exe
+*.zip
+*.log
+dist/*
+!dist/.gitkeep
