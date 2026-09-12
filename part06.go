@@ -36,9 +36,12 @@ func (a *App) createUI() {
 	for _, h := range []uintptr{a.combo, a.btnScan, a.btnStop, a.btnRefresh, a.btnClear, a.btnCopy, a.btnOpen, a.list} {
 		pSendMessageW.Call(h, WM_SETFONT, a.font, 1)
 	}
-	a.refreshAdaptersSync()
+
+	// التطبيق يبدأ متوقفاً. تحميل كروت الشبكة يتم بالخلفية حتى لا يتجمد UI.
+	pEnableWindow.Call(a.btnScan, 0)
 	pEnableWindow.Call(a.btnStop, 0)
 	a.layout()
+	a.refreshAdaptersAsync()
 }
 
 func createFont(size int, weight int) uintptr {
@@ -67,11 +70,10 @@ func (a *App) setAdapters(list []Adapter) {
 		pSendMessageW.Call(a.combo, CB_ADDSTRING, 0, uintptr(unsafe.Pointer(u16(txt))))
 	}
 	if len(a.adapters) > 0 {
+		// enumerateAdapters يرتب الكروت بحيث يكون Ethernet الفعّال أولاً.
 		pSendMessageW.Call(a.combo, CB_SETCURSEL, 0, 0)
 	}
 }
-
-func (a *App) refreshAdaptersSync() { a.setAdapters(enumerateAdapters()) }
 
 func (a *App) refreshAdaptersAsync() {
 	pEnableWindow.Call(a.btnRefresh, 0)
@@ -91,6 +93,9 @@ func (a *App) applyPendingAdapters() {
 	a.pendingMu.Unlock()
 	a.setAdapters(list)
 	pEnableWindow.Call(a.btnRefresh, 1)
+	if !a.scanning && len(list) > 0 {
+		pEnableWindow.Call(a.btnScan, 1)
+	}
 }
 
 func (a *App) selectedAdapter() (Adapter, bool) {
@@ -104,14 +109,13 @@ func (a *App) selectedAdapter() (Adapter, bool) {
 
 func (a *App) startScan() {
 	ad, ok := a.selectedAdapter()
-	if !ok {
+	if !ok || a.scanning || a.scanner.IsRunning() {
 		return
 	}
-	if a.scanner.IsRunning() {
-		return
-	}
-	a.scanning = true
+
+	// Start لا يقوم بأي I/O؛ فقط يجهز الحالة ويطلق العمال بالخلفية.
 	a.scanner.Start(ad)
+	a.scanning = true
 	pEnableWindow.Call(a.btnScan, 0)
 	pEnableWindow.Call(a.btnStop, 1)
 	a.invalidate()
@@ -125,6 +129,8 @@ func (a *App) stopScan() {
 	pEnableWindow.Call(a.btnScan, 1)
 	pEnableWindow.Call(a.btnStop, 0)
 	a.invalidate()
+
+	// الإيقاف قد ينتظر ReadDeadline؛ لذلك لا ينتظر UI أبداً.
 	go a.scanner.Stop()
 }
 
@@ -145,7 +151,9 @@ func (a *App) drainEvents() {
 		pEnableWindow.Call(a.btnStop, 0)
 		a.invalidate()
 	}
-	for i := 0; i < 64; i++ {
+
+	// حد صغير لكل Timer tick حتى لا تحجب دفعة أجهزة كبيرة رسالة الواجهة.
+	for i := 0; i < 24; i++ {
 		select {
 		case d := <-a.events:
 			a.upsertRow(d)
