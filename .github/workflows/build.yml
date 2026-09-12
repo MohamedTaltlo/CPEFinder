@@ -27,7 +27,7 @@ jobs:
           GOOS: windows
           GOARCH: amd64
           CGO_ENABLED: '0'
-        run: go build -trimpath -ldflags="-H=windowsgui -s -w -X main.appVersion=dev-${GITHUB_SHA::8}" -o dist/CPEFinder.exe .
+        run: go build -trimpath -ldflags="-H=windowsgui -s -w -X main.appVersion=0.2.0" -o dist/CPEFinder.exe .
 
       - name: SHA256
         run: sha256sum dist/CPEFinder.exe > dist/CPEFinder.exe.sha256
