@@ -6,6 +6,7 @@
 package main
 
 import (
+	"runtime"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -144,6 +145,10 @@ type App struct {
 var app *App
 
 func main() {
+	// Win32 windows and their message queues are thread-affine. Keeping the
+	// UI goroutine on one OS thread prevents freezes once scanner goroutines start.
+	runtime.LockOSThread()
+
 	ic := INITCOMMONCONTROLSEX{DwSize: uint32(unsafe.Sizeof(INITCOMMONCONTROLSEX{})), DwICC: 0x00004000 | 0x00000001}
 	pInitCommonControlsEx.Call(uintptr(unsafe.Pointer(&ic)))
 	app = &App{events: make(chan Device, 512), rows: map[string]int{}, devices: map[string]Device{}}
@@ -153,7 +158,7 @@ func main() {
 
 func (a *App) run() {
 	hinst, _, _ := pGetModuleHandleW.Call(0)
-	cls := u16("CPEFinderV9Window")
+	cls := u16("CPEFinderWindow")
 	cur, _, _ := pLoadCursorW.Call(0, IDC_ARROW)
 	a.iconBig = makeAppIcon(hinst, 32)
 	a.iconSmall = makeAppIcon(hinst, 16)
