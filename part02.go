@@ -9,6 +9,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -107,7 +108,7 @@ type Device struct {
 
 type Scanner struct {
 	mu       sync.Mutex
-	running  bool
+	running  atomic.Bool
 	stop     chan struct{}
 	adapter  Adapter
 	events   chan Device
@@ -120,21 +121,21 @@ func NewScanner(events chan Device) *Scanner {
 	return &Scanner{events: events, devices: make(map[string]Device), lastUI: make(map[string]time.Time), ubntSeen: make(map[string]time.Time)}
 }
 
-func (s *Scanner) IsRunning() bool { s.mu.Lock(); defer s.mu.Unlock(); return s.running }
+func (s *Scanner) IsRunning() bool { return s.running.Load() }
 
 func (s *Scanner) Start(a Adapter) {
-	s.mu.Lock()
-	if s.running {
-		s.mu.Unlock()
+	if !s.running.CompareAndSwap(false, true) {
 		return
 	}
-	s.running = true
+
+	s.mu.Lock()
 	s.stop = make(chan struct{})
 	s.adapter = a
 	stop := s.stop
 	s.mu.Unlock()
+
 	go func() {
-		defer func() { s.mu.Lock(); s.running = false; s.mu.Unlock() }()
+		defer s.running.Store(false)
 		var wg sync.WaitGroup
 		wg.Add(3)
 		go func() { defer wg.Done(); s.ubiquitiLoop(stop) }()
@@ -146,7 +147,7 @@ func (s *Scanner) Start(a Adapter) {
 
 func (s *Scanner) Stop() {
 	s.mu.Lock()
-	if s.running && s.stop != nil {
+	if s.stop != nil {
 		select {
 		case <-s.stop:
 		default:
