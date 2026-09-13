@@ -1,60 +1,63 @@
 # CPEFinder — كاشف عناوين أجهزة الشبكة
 
-أداة Windows مفتوحة المصدر لاكتشاف أجهزة CPE المتصلة بالشبكة المحلية وعرض معلوماتها، مع واجهة عربية.
+أداة مفتوحة المصدر لاكتشاف أجهزة CPE والراديو على الشبكة المحلية، مع نسختين Windows وAndroid.
 
-تهدف الأداة إلى مساعدة فنيي الشبكات في العثور على أجهزة مثل Ubiquiti airMAX / airMAX AC / Wave، مع دعم اكتشاف عام يفيد مع Mimosa وCambium والأجهزة الأخرى متى كانت تعلن عن نفسها عبر البروتوكولات المحلية المدعومة.
+## Windows v0.3.0
 
-## الخصائص
+محركات الاكتشاف الحالية:
 
-- واجهة Windows عربية واتجاه RTL.
-- اكتشاف Ubiquiti Discovery المحلي.
-- قراءة معلومات الجهاز المتاحة مثل IPv4 وMAC والطراز واسم الجهاز وSSID وإصدار النظام متى أرسلها الجهاز.
-- استخدام ARP وواجهات Windows المحلية للمساعدة في الاكتشاف.
-- لا يرسل أي Telemetry ولا يحتاج خادماً سحابياً كي يعمل.
-- لا يحتاج اتصال إنترنت أثناء تشغيل التطبيق.
+- Ubiquiti Discovery عبر UDP/10001: airMAX / airMAX AC والأجهزة التي تدعم نفس بروتوكول Ubiquiti، بما فيها Wave عندما يكون Discovery متاحاً في الـFirmware.
+- Cambium MNDP عبر UDP/5678 عند تفعيل MAC-Telnet/MNDP Discovery.
+- ARP table + OUI recognition لـ Ubiquiti وMimosa وCambium.
+- SSDP كطريقة مساعدة.
+- Active local-subnet probing وdefault-address probes لتغذية ARP table.
 
-> ملاحظة: إمكانات الاكتشاف تختلف باختلاف الشركة وإصدار Firmware وإعداد الجهاز. ليس كل جهاز يعلن عن كل الحقول.
+يعرض IPv4 وMAC والشركة والطراز واسم الجهاز وSSID وإصدار النظام عندما يرسل الجهاز هذه البيانات.
 
-## الأنظمة المدعومة
+## Android V2
 
-- Windows 10/11 x64.
-- لا يحتاج Administrator في الإصدار الحالي.
+الحزمة موجودة في `android/CPEFinder_Android_Studio_V2_COMPLETE.zip` ويتم بناؤها تلقائياً بواسطة `.github/workflows/android.yml`.
 
-## البناء من المصدر
+Android يستخدم:
+
+- Ubiquiti Discovery UDP/10001.
+- Cambium MNDP UDP/5678.
+- ARP/Neighbor + OUI recognition.
+- SSDP / WS-Discovery / mDNS.
+- Active subnet/default-address probing.
+
+### ملاحظة Android المهمة
+
+Android العادي بدون Root لا يسمح للتطبيقات بإرسال أو التقاط Ethernet ARP/LLDP frames خام. لذلك Ubiquiti/Cambium قد يُكتشفان حتى مع اختلاف IP subnet عندما يرد بروتوكول الـbroadcast الخاص بهما، أما Mimosa بعنوان ثابت خارج subnet الهاتف فلا توجد طريقة عامة مضمونة 100% إذا لم يعلن الجهاز عن نفسه ببروتوكول IP discovery. داخل نفس subnet يحاول التطبيق كشفه عبر Neighbor/OUI والفحص النشط.
+
+## البناء من المصدر — Windows
 
 يتطلب Go 1.23 أو أحدث:
 
 ```powershell
 git clone https://github.com/MohamedTaltlo/CPEFinder.git
-cd cpefinder
+cd CPEFinder
 $env:GOOS="windows"
 $env:GOARCH="amd64"
 $env:CGO_ENABLED="0"
-go build -trimpath -ldflags="-H=windowsgui -s -w -X main.appVersion=0.1.0" -o CPEFinder.exe .
+go build -trimpath -ldflags="-H=windowsgui -s -w -X main.appVersion=0.3.0" -o CPEFinder.exe .
 ```
 
-أو استخدم GitHub Actions الموجود في `.github/workflows/build.yml`.
+أو استخدم GitHub Actions.
 
 ## الخصوصية
 
-هذا البرنامج لا ينقل أي معلومات إلى أنظمة شبكية أخرى إلا عندما يطلب المستخدم صراحةً عملية مرتبطة بالاكتشاف المحلي أو فتح واجهة جهاز محدد. لا توجد Telemetry أو Analytics. راجع [PRIVACY.md](PRIVACY.md).
+لا توجد Telemetry أو Analytics. راجع [PRIVACY.md](PRIVACY.md).
 
 ## Code signing policy
 
-Free code signing provided by SignPath.io, certificate by SignPath Foundation **بعد قبول المشروع في برنامج SignPath Foundation**.
-
-- جميع الملفات التنفيذية الرسمية يجب أن تُبنى آلياً من هذا المستودع العام.
-- لا يتم توقيع ملفات تنفيذية مبنية من مصدر غير موجود في هذا المستودع.
-- كل إصدار موقّع يتطلب موافقة يدوية وفق إعداد SignPath.
-- Committers / reviewers / approvers ستُحدد روابطهم هنا بعد إنشاء مستودع GitHub والمنظمة/الحساب.
+Free code signing provided by SignPath.io, certificate by SignPath Foundation بعد قبول المشروع في برنامج SignPath Foundation.
 
 التفاصيل: [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
 
 ## الأمان
 
-الأداة مخصصة لاكتشاف الأجهزة التي تملكها أو مخولاً بإدارتها على الشبكة المحلية. لا تتضمن استغلال ثغرات أو تجاوز كلمات مرور أو آليات حماية.
-
-للإبلاغ عن مشكلة أمنية راجع [SECURITY.md](SECURITY.md).
+الأداة مخصصة لاكتشاف وإدارة الأجهزة التي تملكها أو مخولاً بإدارتها. لا تتضمن استغلال ثغرات أو تجاوز كلمات مرور أو آليات حماية.
 
 ## الترخيص
 
