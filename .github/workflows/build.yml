@@ -27,7 +27,7 @@ jobs:
           GOOS: windows
           GOARCH: amd64
           CGO_ENABLED: '0'
-        run: go build -trimpath -ldflags="-H=windowsgui -s -w -X main.appVersion=0.2.0" -o dist/CPEFinder.exe .
+        run: go build -trimpath -ldflags="-H=windowsgui -s -w -X main.appVersion=0.3.0" -o dist/CPEFinder.exe .
 
       - name: SHA256
         run: sha256sum dist/CPEFinder.exe > dist/CPEFinder.exe.sha256
@@ -35,7 +35,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CPEFinder-windows-amd64
+          name: CPEFinder-windows-amd64-v0.3.0
           path: |
             dist/CPEFinder.exe
             dist/CPEFinder.exe.sha256
