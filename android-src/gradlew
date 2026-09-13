@@ -1,0 +1,11 @@
+#!/bin/sh
+APP_HOME="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+URL="https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar"
+if [ ! -f "$JAR" ]; then
+  mkdir -p "$(dirname "$JAR")"
+  if command -v curl >/dev/null 2>&1; then curl -fL "$URL" -o "$JAR" || exit 1
+  elif command -v wget >/dev/null 2>&1; then wget -O "$JAR" "$URL" || exit 1
+  else echo "Gradle wrapper JAR is missing. Open the project in Android Studio once or install curl/wget."; exit 1; fi
+fi
+exec java -classpath "$JAR" org.gradle.wrapper.GradleWrapperMain "$@"
